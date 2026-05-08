@@ -256,7 +256,6 @@ function createPreparedSlackMessage(params?: {
       ...params?.ctxPayload,
     },
     turn: {
-      storePath: "/tmp/slack-sessions.json",
       record: {},
     },
     replyToMode: params?.replyToMode ?? "all",
@@ -603,7 +602,6 @@ vi.mock("../allow-list.js", () => ({
 }));
 
 vi.mock("../config.runtime.js", () => ({
-  resolveStorePath: () => "/tmp/openclaw-store.json",
   updateLastRoute: updateLastRouteMock,
 }));
 
