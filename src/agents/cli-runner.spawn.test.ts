@@ -37,7 +37,6 @@ import { createClaudeApiErrorFixture } from "./test-helpers/claude-api-error-fix
 
 type ProcessSupervisor = ReturnType<typeof getProcessSupervisor>;
 type SupervisorSpawnFn = ProcessSupervisor["spawn"];
-const testSessionFile = (sessionId: string) => `sqlite-transcript://main/${sessionId}.jsonl`;
 
 beforeEach(() => {
   resetAgentEventsForTest();
@@ -100,7 +99,6 @@ function buildPreparedCliRunContext(params: {
     params: {
       sessionId: params.sessionId ?? "s1",
       sessionKey: params.sessionKey,
-      sessionFile: testSessionFile(params.sessionId ?? "s1"),
       workspaceDir,
       config: params.config,
       prompt: params.prompt ?? "hi",
@@ -246,7 +244,6 @@ describe("runCliAgent spawn path", () => {
     const context: PreparedCliRunContext = {
       params: {
         sessionId: "s1",
-        sessionFile: testSessionFile("s1"),
         workspaceDir: "/tmp",
         prompt: "Run: node script.mjs",
         provider: "claude-cli",
@@ -492,7 +489,7 @@ describe("runCliAgent spawn path", () => {
           },
         }),
       );
-      await expectPathMissing(pluginDir);
+      await expect(fs.access(pluginDir)).rejects.toThrow();
     } finally {
       await fs.rm(workspaceDir, { recursive: true, force: true });
     }
@@ -548,7 +545,6 @@ describe("runCliAgent spawn path", () => {
   it("ignores legacy claudeSessionId on the compat wrapper", () => {
     const params = buildRunClaudeCliAgentParams({
       sessionId: "openclaw-session",
-      sessionFile: testSessionFile("openclaw-session"),
       workspaceDir: "/tmp",
       prompt: "hi",
       model: "opus",
@@ -567,7 +563,6 @@ describe("runCliAgent spawn path", () => {
     const params = buildRunClaudeCliAgentParams({
       sessionId: "openclaw-session",
       sessionKey: "agent:main:matrix:room:123",
-      sessionFile: testSessionFile("openclaw-session"),
       workspaceDir: "/tmp",
       prompt: "hi",
       model: "opus",
@@ -582,7 +577,6 @@ describe("runCliAgent spawn path", () => {
   it("forwards channel context through the compat wrapper", () => {
     const params = buildRunClaudeCliAgentParams({
       sessionId: "openclaw-session",
-      sessionFile: testSessionFile("openclaw-session"),
       workspaceDir: "/tmp",
       prompt: "hi",
       timeoutMs: 1_000,
@@ -598,7 +592,6 @@ describe("runCliAgent spawn path", () => {
   it("forwards static extra system prompt through the compat wrapper", () => {
     const params = buildRunClaudeCliAgentParams({
       sessionId: "openclaw-session",
-      sessionFile: testSessionFile("openclaw-session"),
       workspaceDir: "/tmp",
       prompt: "hi",
       timeoutMs: 1_000,
@@ -614,7 +607,6 @@ describe("runCliAgent spawn path", () => {
   it("forwards cron jobId through the compat wrapper", () => {
     const params = buildRunClaudeCliAgentParams({
       sessionId: "openclaw-session",
-      sessionFile: testSessionFile("openclaw-session"),
       workspaceDir: "/tmp",
       prompt: "hi",
       timeoutMs: 1_000,

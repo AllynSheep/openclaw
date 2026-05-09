@@ -3,7 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionEntry } from "../../config/sessions.js";
-import { createSqliteSessionTranscriptLocator } from "../../config/sessions/paths.js";
+import {
+  createSqliteSessionTranscriptLocator,
+  parseSqliteSessionTranscriptLocator,
+} from "../../config/sessions/paths.js";
 import { listSessionEntries, upsertSessionEntry } from "../../config/sessions/store.js";
 import { appendSessionTranscriptMessage } from "../../config/sessions/transcript-append.js";
 import { loadSqliteSessionTranscriptEvents } from "../../config/sessions/transcript-store.sqlite.js";
@@ -69,8 +72,8 @@ function sessionTranscriptLocator(sessionId: string): string {
   return createSqliteSessionTranscriptLocator({ agentId: "main", sessionId });
 }
 
-async function readSessionMessages(sessionFile: string) {
-  return (await readSessionFileEntries(sessionFile))
+async function readSessionMessages(transcriptLocator: string) {
+  return (await readTranscriptLocatorEntries(transcriptLocator))
     .filter((entry) => entry.type === "message")
     .map(
       (entry) =>
@@ -78,8 +81,10 @@ async function readSessionMessages(sessionFile: string) {
     );
 }
 
-async function readSessionFileEntries(sessionFile: string) {
-  const sessionId = path.basename(sessionFile).replace(/\.jsonl$/, "");
+async function readTranscriptLocatorEntries(transcriptLocator: string) {
+  const sessionId =
+    parseSqliteSessionTranscriptLocator(transcriptLocator)?.sessionId ??
+    path.basename(transcriptLocator).replace(/\.jsonl$/, "");
   return loadSqliteSessionTranscriptEvents({
     agentId: "main",
     sessionId,
@@ -173,7 +178,6 @@ describe("CLI attempt execution", () => {
       sessionId: params.sessionEntry.sessionId,
       sessionKey: params.sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(params.sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: params.body,
       isFallbackRetry: false,
@@ -237,7 +241,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "retry this",
       isFallbackRetry: false,
@@ -382,7 +385,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "continue",
       isFallbackRetry: false,
@@ -427,11 +429,8 @@ describe("CLI attempt execution", () => {
       config: {},
     });
 
-    const sessionFile = updatedEntry?.sessionFile;
-    if (!sessionFile) {
-      throw new Error("expected CLI transcript persistence to create a session file");
-    }
-    const entries = await readSessionFileEntries(sessionFile);
+    const transcriptLocator = sessionTranscriptLocator(sessionEntry.sessionId);
+    const entries = await readTranscriptLocatorEntries(transcriptLocator);
     expectRecordFields(requireRecord(entries[0], "session entry"), {
       type: "session",
       id: sessionEntry.sessionId,
@@ -445,7 +444,7 @@ describe("CLI attempt execution", () => {
       type: "message",
       parentId: entries[1]?.id,
     });
-    const messages = await readSessionMessages(sessionFile);
+    const messages = await readSessionMessages(transcriptLocator);
     expect(messages).toHaveLength(2);
     expectRecordFields(requireRecord(messages[0], "user message"), {
       role: "user",
@@ -491,7 +490,7 @@ describe("CLI attempt execution", () => {
       embeddedAssistantGapFill: true,
     });
 
-    let messages = await readSessionMessages(updatedFirst?.sessionFile ?? "");
+    let messages = await readSessionMessages(sessionTranscriptLocator(sessionEntry.sessionId));
     expect(messages).toHaveLength(1);
     expectRecordFields(requireRecord(messages[0], "assistant message"), {
       role: "assistant",
@@ -511,7 +510,7 @@ describe("CLI attempt execution", () => {
       embeddedAssistantGapFill: true,
     });
 
-    messages = await readSessionMessages(updatedFirst?.sessionFile ?? "");
+    messages = await readSessionMessages(sessionTranscriptLocator(sessionEntry.sessionId));
     expect(messages).toHaveLength(1);
   });
 
@@ -544,15 +543,9 @@ describe("CLI attempt execution", () => {
       config: {},
       embeddedAssistantGapFill: true,
     });
-    const sessionFile = updatedFirst?.sessionFile;
-    expect(typeof sessionFile).toBe("string");
-    expect(sessionFile?.length ?? 0).toBeGreaterThan(0);
-    if (typeof sessionFile !== "string" || sessionFile.length === 0) {
-      throw new Error("Expected CLI transcript session file.");
-    }
+    const transcriptLocator = sessionTranscriptLocator(sessionEntry.sessionId);
 
     await appendSessionTranscriptMessage({
-      transcriptPath: sessionFile,
       agentId: "main",
       sessionId: sessionEntry.sessionId,
       cwd: tmpDir,
@@ -577,7 +570,7 @@ describe("CLI attempt execution", () => {
       embeddedAssistantGapFill: true,
     });
 
-    const messages = await readSessionMessages(sessionFile);
+    const messages = await readSessionMessages(transcriptLocator);
     expect(messages).toHaveLength(3);
     expect(messages.map((message) => message.role)).toEqual(["assistant", "user", "assistant"]);
     expectRecordFields(requireRecord(messages[2], "deduped assistant message"), {
@@ -613,7 +606,7 @@ describe("CLI attempt execution", () => {
       config: {},
     });
 
-    const messages = await readSessionMessages(updatedEntry?.sessionFile ?? "");
+    const messages = await readSessionMessages(sessionTranscriptLocator(sessionEntry.sessionId));
     expectRecordFields(requireRecord(messages[0], "transcript user message"), {
       role: "user",
       content: "visible ask",
@@ -639,7 +632,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "route this",
       isFallbackRetry: false,
@@ -689,7 +681,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "route this",
       isFallbackRetry: false,
@@ -745,7 +736,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "route this",
       isFallbackRetry: false,
@@ -799,7 +789,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "route this",
       isFallbackRetry: false,
@@ -853,7 +842,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "raw prompt",
       isFallbackRetry: false,
@@ -976,7 +964,6 @@ describe("CLI attempt execution", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey,
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "cleanup",
       isFallbackRetry: false,
@@ -1039,7 +1026,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "continue",
       isFallbackRetry: false,
@@ -1080,7 +1066,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "switch to minimax",
       isFallbackRetry: false,
@@ -1120,7 +1105,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "read only",
       isFallbackRetry: false,
@@ -1173,7 +1157,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "continue",
       isFallbackRetry: false,
@@ -1228,7 +1211,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "continue",
       isFallbackRetry: false,
@@ -1272,7 +1254,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "start",
       isFallbackRetry: false,
@@ -1313,7 +1294,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "continue",
       isFallbackRetry: false,
@@ -1368,7 +1348,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "continue",
       isFallbackRetry: false,
@@ -1420,7 +1399,6 @@ describe("embedded attempt harness pinning", () => {
       sessionId: sessionEntry.sessionId,
       sessionKey: "agent:main:main",
       sessionAgentId: "main",
-      sessionFile: sessionTranscriptLocator(sessionEntry.sessionId),
       workspaceDir: tmpDir,
       body: "fallback",
       isFallbackRetry: true,
