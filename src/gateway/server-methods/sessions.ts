@@ -421,7 +421,6 @@ function ensureSessionTranscriptFile(params: {
       appendSqliteSessionTranscriptEvent({
         agentId: params.agentId,
         sessionId: params.sessionId,
-        transcriptPath,
         event: header,
       });
     }
@@ -2092,7 +2091,6 @@ export const sessionsHandlers: GatewayRequestHandlers = {
     replaceSqliteSessionTranscriptEvents({
       agentId: target.agentId,
       sessionId,
-      transcriptPath,
       events: lines.map((line) => JSON.parse(line) as unknown),
     });
 
