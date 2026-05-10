@@ -153,8 +153,8 @@ export {
   type AgentSession,
   type ExtensionAPI,
   type ExtensionContext,
-  type FileEntry,
   type SessionEntry,
+  type TranscriptEntry,
 } from "../agents/transcript/session-transcript-contract.js";
 export {
   isToolWrappedWithBeforeToolCallHook,
