@@ -52,6 +52,9 @@ import {
   createVirtualEditTool,
   createVirtualReadTool,
   createVirtualWriteTool,
+  createWorkspaceScratchOverlayEditTool,
+  createWorkspaceScratchOverlayReadTool,
+  createWorkspaceScratchOverlayWriteTool,
   getToolParamsRecord,
   wrapToolMemoryFlushAppendOnlyWrite,
   wrapToolWorkspaceRootGuard,
@@ -613,6 +616,10 @@ export function createOpenClawCodingTools(options?: {
     !hasHostWorkspaceCapability && options?.agentFilesystem?.scratch
       ? options.agentFilesystem.scratch
       : undefined;
+  const workspaceScratchOverlay =
+    hasHostWorkspaceCapability && options?.agentFilesystem?.scratch
+      ? options.agentFilesystem.scratch
+      : undefined;
   const workspaceRoot = resolveWorkspaceRoot(
     options?.agentFilesystem?.workspace?.root ?? options?.workspaceDir,
   );
@@ -676,6 +683,17 @@ export function createOpenClawCodingTools(options?: {
               }),
             ];
           }
+          if (workspaceScratchOverlay && !sandboxRoot) {
+            return [
+              createWorkspaceScratchOverlayReadTool({
+                root: workspaceRoot,
+                scratch: workspaceScratchOverlay,
+                workspaceOnly,
+                modelContextWindowTokens: options?.modelContextWindowTokens,
+                imageSanitization,
+              }),
+            ];
+          }
           if (sandboxRoot) {
             const sandboxed = createSandboxedReadTool({
               root: sandboxRoot,
@@ -702,6 +720,15 @@ export function createOpenClawCodingTools(options?: {
           if (virtualScratch) {
             return [createVirtualWriteTool({ root: workspaceRoot, scratch: virtualScratch })];
           }
+          if (workspaceScratchOverlay && !sandboxRoot) {
+            return [
+              createWorkspaceScratchOverlayWriteTool({
+                root: workspaceRoot,
+                scratch: workspaceScratchOverlay,
+                workspaceOnly,
+              }),
+            ];
+          }
           if (sandboxRoot) {
             return [];
           }
@@ -711,6 +738,15 @@ export function createOpenClawCodingTools(options?: {
         if (tool.name === "edit") {
           if (virtualScratch) {
             return [createVirtualEditTool({ root: workspaceRoot, scratch: virtualScratch })];
+          }
+          if (workspaceScratchOverlay && !sandboxRoot) {
+            return [
+              createWorkspaceScratchOverlayEditTool({
+                root: workspaceRoot,
+                scratch: workspaceScratchOverlay,
+                workspaceOnly,
+              }),
+            ];
           }
           if (sandboxRoot) {
             return [];
