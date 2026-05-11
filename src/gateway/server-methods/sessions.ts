@@ -22,7 +22,6 @@ import {
 import { resolveAgentMainSessionKey } from "../../config/sessions/main-session.js";
 import {
   appendSqliteSessionTranscriptEvent,
-  deleteSqliteSessionTranscript,
   hasSqliteSessionTranscriptEvents,
   replaceSqliteSessionTranscriptEvents,
 } from "../../config/sessions/transcript-store.sqlite.js";
@@ -1819,12 +1818,6 @@ export const sessionsHandlers: GatewayRequestHandlers = {
         })
       : false;
 
-    if (deleted && sessionId) {
-      deleteSqliteSessionTranscript({
-        agentId: target.agentId,
-        sessionId,
-      });
-    }
     if (deleted) {
       emitGatewaySessionEndPluginHook({
         cfg,
