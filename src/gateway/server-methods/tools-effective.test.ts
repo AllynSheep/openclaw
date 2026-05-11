@@ -3,11 +3,17 @@ import { ErrorCodes } from "../protocol/index.js";
 import { __testing, toolsEffectiveHandlers } from "./tools-effective.js";
 
 const runtimeMocks = vi.hoisted(() => ({
-  deliveryContextFromSession: vi.fn(() => ({
+  readSqliteSessionDeliveryContext: vi.fn(() => ({
     channel: "telegram",
     to: "channel-1",
     accountId: "acct-1",
     threadId: "thread-2",
+  })),
+  readSqliteSessionRoutingInfo: vi.fn(() => ({
+    chatType: "group",
+    channel: "telegram",
+    accountId: "acct-1",
+    conversationThreadId: "thread-2",
   })),
   listAgentIds: vi.fn(() => ["main"]),
   getRuntimeConfig: vi.fn(() => ({})),
@@ -272,7 +278,7 @@ describe("tools.effective handler", () => {
     expect((fresh.respond.mock.calls[0] as RespondCall | undefined)?.[1]).toBe(refreshedPayload);
   });
 
-  it("falls back to origin.threadId when delivery context omits thread metadata", async () => {
+  it("uses typed SQLite routing when delivery context omits thread metadata", async () => {
     runtimeMocks.loadSessionEntry.mockReturnValueOnce({
       cfg: {},
       canonicalKey: "main:abc",
@@ -295,11 +301,16 @@ describe("tools.effective handler", () => {
         model: "gpt-4.1",
       },
     } as never);
-    runtimeMocks.deliveryContextFromSession.mockReturnValueOnce({
+    runtimeMocks.readSqliteSessionDeliveryContext.mockReturnValueOnce({
       channel: "telegram",
       to: "channel-1",
       accountId: "acct-1",
-      threadId: "42",
+    });
+    runtimeMocks.readSqliteSessionRoutingInfo.mockReturnValueOnce({
+      chatType: "group",
+      channel: "telegram",
+      accountId: "acct-1",
+      conversationThreadId: "42",
     });
 
     const { respond, invoke } = createInvokeParams({ sessionKey: "main:abc" });
@@ -308,6 +319,38 @@ describe("tools.effective handler", () => {
     expect(runtimeMocks.resolveEffectiveToolInventory).toHaveBeenCalledWith(
       expect.objectContaining({
         currentThreadTs: "42",
+      }),
+    );
+    expect((respond.mock.calls[0] as RespondCall | undefined)?.[0]).toBe(true);
+  });
+
+  it("does not recover routing from stale origin shadows", async () => {
+    runtimeMocks.loadSessionEntry.mockReturnValueOnce({
+      cfg: {},
+      canonicalKey: "main:abc",
+      entry: {
+        sessionId: "session-origin-thread",
+        updatedAt: 1,
+        origin: {
+          provider: "telegram",
+          accountId: "acct-1",
+          threadId: 42,
+        },
+        modelProvider: "openai",
+        model: "gpt-4.1",
+      },
+    } as never);
+    runtimeMocks.readSqliteSessionDeliveryContext.mockReturnValueOnce(undefined);
+    runtimeMocks.readSqliteSessionRoutingInfo.mockReturnValueOnce(undefined);
+
+    const { respond, invoke } = createInvokeParams({ sessionKey: "main:abc" });
+    await invoke();
+
+    expect(runtimeMocks.resolveEffectiveToolInventory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messageProvider: undefined,
+        accountId: undefined,
+        currentThreadTs: undefined,
       }),
     );
     expect((respond.mock.calls[0] as RespondCall | undefined)?.[0]).toBe(true);
