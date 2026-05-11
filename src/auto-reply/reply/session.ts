@@ -630,7 +630,7 @@ export async function initSessionState(params: {
     sessionKey,
     existing: sessionEntry,
     groupResolution,
-    skipSystemEventOrigin: isSystemEvent,
+    skipSystemEventRoute: isSystemEvent,
   });
   if (metaPatch) {
     sessionEntry = { ...sessionEntry, ...metaPatch };
