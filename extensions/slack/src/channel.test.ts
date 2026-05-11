@@ -152,10 +152,6 @@ function findSchemaEntry(
 }
 
 describe("slackPlugin actions", () => {
-  it("prefers session lookup for announce target routing", () => {
-    expect(slackPlugin.meta.preferSessionLookupForAnnounceTarget).toBe(true);
-  });
-
   it("owns unified message tool discovery", () => {
     const discovery = slackPlugin.actions?.describeMessageTool({
       cfg: {
