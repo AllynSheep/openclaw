@@ -17,7 +17,10 @@ import type { SessionEntry } from "./types.js";
 
 const ORIGINAL_STATE_DIR = process.env.OPENCLAW_STATE_DIR;
 
-type DeliveryInfoTestDatabase = Pick<OpenClawAgentKyselyDatabase, "session_entries">;
+type DeliveryInfoTestDatabase = Pick<
+  OpenClawAgentKyselyDatabase,
+  "conversations" | "session_conversations" | "session_entries" | "sessions"
+>;
 
 const buildEntry = (deliveryContext: SessionEntry["deliveryContext"]): SessionEntry => ({
   sessionId: "session-1",
@@ -152,6 +155,40 @@ describe("extractDeliveryInfo", () => {
         to: "webchat:user-123",
         accountId: "default",
       },
+      threadId: undefined,
+    });
+  });
+
+  it("does not reconstruct delivery context from compatibility entry_json", () => {
+    const { env } = useTempStateDir();
+    const sessionKey = "agent:main:webchat:dm:user-123";
+    upsertSessionEntry({
+      agentId: "main",
+      env,
+      sessionKey,
+      entry: buildEntry({
+        channel: "webchat",
+        to: "webchat:user-123",
+        accountId: "default",
+      }),
+    });
+
+    const database = openOpenClawAgentDatabase({ agentId: "main", env });
+    const db = getNodeSqliteKysely<DeliveryInfoTestDatabase>(database.db);
+    executeSqliteQuerySync(
+      database.db,
+      db
+        .updateTable("sessions")
+        .set({ primary_conversation_id: null })
+        .where("session_key", "=", sessionKey),
+    );
+    executeSqliteQuerySync(
+      database.db,
+      db.deleteFrom("session_conversations").where("session_id", "=", "session-1"),
+    );
+
+    expect(extractDeliveryInfo(sessionKey)).toEqual({
+      deliveryContext: undefined,
       threadId: undefined,
     });
   });
