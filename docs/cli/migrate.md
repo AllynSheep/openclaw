@@ -187,8 +187,8 @@ For migrated source-installed curated plugins, apply writes:
 Migration never writes `plugins["*"]` and never stores local marketplace cache
 paths. Source-side app-readiness failures are reported on manual items with
 typed reasons such as `app_inaccessible`, `app_disabled`, `app_missing`,
-`app_auth_required`, `plugin_disabled`, `plugin_read_unavailable`, or
-`app_inventory_unavailable`; those plugins are not written to target config.
+`plugin_disabled`, `plugin_read_unavailable`, or `app_inventory_unavailable`;
+those plugins are not written to target config.
 Target-side auth-required installs are reported on the affected plugin item with
 `status: "skipped"`, `reason: "auth_required"`, and sanitized app identifiers.
 Their explicit config entries are written disabled until you reauthorize and

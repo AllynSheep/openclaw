@@ -168,7 +168,7 @@ plugins, while unsafe schemas and ambiguous ownership still fail closed:
 needs authentication. The explicit plugin entry is written disabled until you
 reauthorize and enable it.
 
-**`app_inaccessible`, `app_disabled`, `app_missing`, or `app_auth_required`:**
+**`app_inaccessible`, `app_disabled`, or `app_missing`:**
 migration did not install the plugin because the source Codex app inventory did
 not show all owned apps as ready. Reauthorize or enable the app in Codex, then
 rerun migration.
