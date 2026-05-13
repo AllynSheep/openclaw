@@ -251,7 +251,7 @@ export type SessionMaintenanceConfig = {
    * Session keys that should never be pruned, even if they exceed retention limits.
    * Useful for preserving primary sessions like the main WebUI session.
    */
-  preserveKeys?: string[];
+  preserveKeys?: string[]; // Config-level keys to preserve from pruning
 };
 
 export type LoggingConfig = {
