@@ -23,7 +23,6 @@ import {
 } from "./store-cache.js";
 import { normalizeStoreSessionKey, resolveSessionStoreEntry } from "./store-entry.js";
 import { loadSessionStore, normalizeSessionStore } from "./store-load.js";
-import { collectSessionMaintenancePreserveKeys } from "./store-maintenance-preserve.js";
 import { resolveMaintenanceConfig } from "./store-maintenance-runtime.js";
 import {
   capEntryCount,
@@ -363,7 +362,7 @@ async function saveSessionStoreUnlocked(
         store,
         storePath,
         activeSessionKey: opts?.activeSessionKey,
-        preserveKeys: preserveSessionKeys,
+        preserveKeys: finalPreserveKeys,
         maintenance,
         warnOnly: false,
         log,
