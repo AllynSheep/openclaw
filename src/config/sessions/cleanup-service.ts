@@ -254,6 +254,19 @@ async function previewStoreCleanup(params: {
   const cappedKeys = new Set<string>();
   const missingKeys = new Set<string>();
   const dmScopeRetiredKeys = new Set<string>();
+
+  // Build preserve keys set from maintenance config and active key
+  const preserveKeys = new Set<string>();
+  if (params.activeKey) {
+    preserveKeys.add(params.activeKey);
+  }
+  if (params.maintenance.preserveKeys) {
+    for (const key of params.maintenance.preserveKeys) {
+      preserveKeys.add(key);
+    }
+  }
+  const finalPreserveKeys = preserveKeys.size > 0 ? preserveKeys : undefined;
+
   const missing =
     params.fixMissing === true
       ? pruneMissingTranscriptEntries({
@@ -281,12 +294,14 @@ async function previewStoreCleanup(params: {
     onPruned: ({ key }) => {
       staleKeys.add(key);
     },
+    preserveKeys: finalPreserveKeys,
   });
   const capped = capEntryCount(previewStore, params.maintenance.maxEntries, {
     log: false,
     onCapped: ({ key }) => {
       cappedKeys.add(key);
     },
+    preserveKeys: finalPreserveKeys,
   });
   const entryCleanupArtifactPaths = new Set<string>();
   addEntryArtifactPathsToSet({

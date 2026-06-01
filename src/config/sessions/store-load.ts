@@ -156,13 +156,17 @@ export function loadSessionStore(
     let pruned = 0;
     let capped = 0;
     if (maintenance.mode === "enforce" && beforeCount > maintenance.maxEntries) {
-      pruned = pruneStaleEntries(store, maintenance.pruneAfterMs, { log: false });
+      const preserveKeys = maintenance.preserveKeys ? new Set(maintenance.preserveKeys) : undefined;
+      pruned = pruneStaleEntries(store, maintenance.pruneAfterMs, {
+        log: false,
+        preserveKeys,
+      });
       const countAfterPrune = Object.keys(store).length;
       capped = shouldRunSessionEntryMaintenance({
         entryCount: countAfterPrune,
         maxEntries: maintenance.maxEntries,
       })
-        ? capEntryCount(store, maintenance.maxEntries, { log: false })
+        ? capEntryCount(store, maintenance.maxEntries, { log: false, preserveKeys })
         : 0;
     }
     const afterCount = Object.keys(store).length;
